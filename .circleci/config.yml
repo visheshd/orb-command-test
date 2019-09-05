@@ -1,10 +1,14 @@
-# https://circleci.com/docs/2.0/language-javascript/
-version: 2
+# https://circleci.com/docs/2.1/language-javascript/
+version: 2.1
+orbs:
+  aws-ecr: circleci/aws-ecr@0.0.2
+  aws-ecs: circleci/aws-ecs@0.0.8
+
 jobs:
-  'node-10':
+  "node-10":
     docker:
       - image: circleci/node:10
-    working_directory: ~/typescript-starter
+    working_directory: ~/app
     steps:
       - checkout
       # Download and cache dependencies
@@ -21,28 +25,18 @@ jobs:
       - run: npm test
       - run: npm run cov:send
       - run: npm run cov:check
-  'node-latest':
-    docker:
-      - image: circleci/node:latest
-    working_directory: ~/typescript-starter
+  push-and-deploy:
+    executor: default
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "package.json" }}
-            - v1-dependencies-
-      - run: npm install
-      - save_cache:
-          paths:
-            - node_modules
-          key: v1-dependencies-{{ checksum "package.json" }}
-      - run: npm test
-      - run: npm run cov:send
-      - run: npm run cov:check
+      - aws-ecr/build-and-push-image:
+          repo: "json2test"
 
 workflows:
   version: 2
   build:
     jobs:
-      - 'node-10'
-      - 'node-latest'
+      - "node-10"
+
+  deploy:
+    jobs:
+      - push-and-deploy
